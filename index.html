@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
+<base href="/">
 <title>Pesanan & Sales</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2423,14 +2424,46 @@ function navFor(role) {
     } }))
   ];
 }
+const ROLE_PATH = { owner: "owner", admin: "admin", gudang: "gudang", spv_sales: "spv", korsal: "korsal", sales: "sales" };
+function parsePath() {
+  return location.pathname.split("/").filter(Boolean).map((x) => decodeURIComponent(x));
+}
+function goPath(path, replace) {
+  try {
+    if (location.pathname !== path) history[replace ? "replaceState" : "pushState"](null, "", path);
+  } catch (e) {
+  }
+}
 function Shell({ profile, brand, marquee, onLogout }) {
   const nav = useMemo(() => navFor(profile.role), [profile.role]);
-  const [secId, setSecId] = useState(nav[0].id);
-  const [subs, setSubs] = useState({});
+  const base = ROLE_PATH[profile.role] || "app";
+  const fromUrl = () => {
+    const [b, s, u] = parsePath();
+    const sc = b === base ? nav.find((x) => x.id === s) : null;
+    return { sec: sc ? sc.id : nav[0].id, sub: sc && u && sc.subs.some((x) => x[0] === u) ? u : null };
+  };
+  const [route, setRoute] = useState(fromUrl);
   const [pw, setPw] = useState(false);
-  const cur = nav.find((s) => s.id === secId) || nav[0];
-  const sub = subs[cur.id] && cur.subs.some((x) => x[0] === subs[cur.id]) ? subs[cur.id] : cur.subs[0][0];
-  const setSub = (s) => setSubs((o) => ({ ...o, [cur.id]: s }));
+  const cur = nav.find((s) => s.id === route.sec) || nav[0];
+  const sub = route.sub && cur.subs.some((x) => x[0] === route.sub) ? route.sub : cur.subs[0][0];
+  const pathOf = (sc, su) => "/" + base + "/" + sc + "/" + su;
+  const setSecId = (id) => {
+    const sc = nav.find((x) => x.id === id) || nav[0];
+    setRoute({ sec: sc.id, sub: null });
+    goPath(pathOf(sc.id, sc.subs[0][0]));
+  };
+  const setSub = (su) => {
+    setRoute({ sec: cur.id, sub: su });
+    goPath(pathOf(cur.id, su));
+  };
+  useEffect(() => {
+    goPath(pathOf(cur.id, sub), true);
+  }, [cur.id, sub]);
+  useEffect(() => {
+    const h = () => setRoute(fromUrl());
+    window.addEventListener("popstate", h);
+    return () => window.removeEventListener("popstate", h);
+  }, [nav]);
   const onKey = (e, list, val, set) => {
     const i = list.findIndex((t) => t[0] === val);
     if (e.key === "ArrowRight") {
@@ -2524,6 +2557,9 @@ function Authed() {
   useEffect(() => {
     applyBrand(brand);
   }, [brand]);
+  useEffect(() => {
+    if (phase === "login") goPath("/login", true);
+  }, [phase]);
   const ctx = useMemo(() => ({ toast, brand, setBrand, marquee, setMarquee, profile }), [toast, brand, marquee, profile]);
   let body;
   if (phase === "loading") body = /* @__PURE__ */ React.createElement(Centered, { brand }, /* @__PURE__ */ React.createElement(Loading, { text: "Memuat…" }));
