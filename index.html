@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <base href="/">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#450A0A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prime Cookies">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>Pesanan & Sales</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2519,6 +2525,67 @@ function SetupScreen({ reason }) {
   };
   return /* @__PURE__ */ React.createElement(Centered, { wide: true }, /* @__PURE__ */ React.createElement("form", { onSubmit: save, className: "card", style: { padding: 22 }, noValidate: true }, /* @__PURE__ */ React.createElement("h1", { className: "h2", style: { fontSize: 26 } }, "Hubungkan ke Supabase"), /* @__PURE__ */ React.createElement("p", { className: "sub", style: { margin: "4px 0 16px" } }, "Langkah satu kali. Isi dua data berikut dari Supabase: menu ", /* @__PURE__ */ React.createElement("b", null, "Project Settings, API"), "."), lib && /* @__PURE__ */ React.createElement("div", { className: "pill bad", style: { whiteSpace: "normal", borderRadius: 8, padding: "8px 10px", marginBottom: 12 } }, "Pustaka Supabase gagal dimuat dari internet. Periksa koneksi lalu muat ulang halaman."), reason === "service_role" && /* @__PURE__ */ React.createElement("div", { className: "pill bad", style: { whiteSpace: "normal", borderRadius: 8, padding: "8px 10px", marginBottom: 12 } }, "Kunci yang tersimpan adalah kunci rahasia (service_role). Aplikasi menolaknya demi keamanan. Ganti dengan kunci anon."), /* @__PURE__ */ React.createElement("div", { className: "grid gap-4" }, /* @__PURE__ */ React.createElement(Field, { id: "s-url", label: "Project URL", error: err.url }, /* @__PURE__ */ React.createElement("input", { id: "s-url", className: "input" + (err.url ? " err" : ""), value: url, onChange: (e) => setUrl(e.target.value), placeholder: "https://xxxxxxxx.supabase.co", autoComplete: "off", spellCheck: "false" })), /* @__PURE__ */ React.createElement(Field, { id: "s-key", label: "Anon / publishable key", error: err.key, hint: "Kunci publik (aman di browser). Jangan memakai service_role atau secret key." }, /* @__PURE__ */ React.createElement("textarea", { id: "s-key", className: "input" + (err.key ? " err" : ""), rows: 4, value: key, onChange: (e) => setKey(e.target.value), placeholder: "eyJhbGciOi... atau sb_publishable_...", autoComplete: "off", spellCheck: "false", style: { fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12.5 } })), /* @__PURE__ */ React.createElement("button", { type: "submit", className: "btn", style: { padding: "11px 16px" }, disabled: lib }, "Simpan & Hubungkan")), /* @__PURE__ */ React.createElement("div", { className: "sub", style: { marginTop: 14, borderTop: "1px solid var(--line)", paddingTop: 12 } }, "Data ini disimpan di browser ini saja. Agar semua perangkat otomatis terhubung, isi dua baris ", /* @__PURE__ */ React.createElement("span", { className: "num" }, "SUPABASE_URL"), " dan ", /* @__PURE__ */ React.createElement("span", { className: "num" }, "SUPABASE_ANON_KEY"), " di bagian atas berkas index.html sebelum di-deploy.")));
 }
+let _ip = null;
+const _ipSubs = /* @__PURE__ */ new Set();
+const _ipNotify = () => _ipSubs.forEach((f) => f());
+const isStandalone = () => {
+  try {
+    return window.matchMedia && window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  } catch (e) {
+    return false;
+  }
+};
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  _ip = e;
+  _ipNotify();
+});
+window.addEventListener("appinstalled", () => {
+  _ip = null;
+  LS.set("wl_app_installed", "1");
+  _ipNotify();
+});
+function useInstall() {
+  const { toast } = useApp();
+  const [, force] = useState(0);
+  const [help, setHelp] = useState(false);
+  useEffect(() => {
+    const f = () => force((n) => n + 1);
+    const done = () => toast("Aplikasi sudah terpasang. Buka lewat ikon di layar utama Anda.", "ok");
+    _ipSubs.add(f);
+    window.addEventListener("appinstalled", done);
+    return () => {
+      _ipSubs.delete(f);
+      window.removeEventListener("appinstalled", done);
+    };
+  }, []);
+  const standalone = isStandalone();
+  const installedFlag = LS.get("wl_app_installed") === "1";
+  const mode = standalone ? "standalone" : _ip ? "ready" : installedFlag ? "done" : "manual";
+  const install = async () => {
+    if (_ip) {
+      const p = _ip;
+      try {
+        p.prompt();
+        await p.userChoice;
+      } catch (e) {
+      }
+      _ip = null;
+      _ipNotify();
+    } else setHelp(true);
+  };
+  return { mode, install, help, setHelp };
+}
+function InstallHelp({ onClose }) {
+  const ios = isIOS();
+  return /* @__PURE__ */ React.createElement(Modal, { title: "Pasang aplikasi", sub: "Buka lebih cepat dari layar utama, tanpa mengetik alamat", onClose, max: 460 }, /* @__PURE__ */ React.createElement("div", { className: "grid gap-3", style: { padding: "4px 20px 20px" } }, ios ? /* @__PURE__ */ React.createElement("ol", { className: "grid gap-2", style: { paddingLeft: 18, listStyle: "decimal" } }, /* @__PURE__ */ React.createElement("li", null, "Buka halaman ini di ", /* @__PURE__ */ React.createElement("b", null, "Safari"), "."), /* @__PURE__ */ React.createElement("li", null, "Ketuk tombol ", /* @__PURE__ */ React.createElement("b", null, "Bagikan"), " (kotak dengan panah ke atas)."), /* @__PURE__ */ React.createElement("li", null, "Pilih ", /* @__PURE__ */ React.createElement("b", null, "Tambahkan ke Layar Utama"), ", lalu ketuk ", /* @__PURE__ */ React.createElement("b", null, "Tambah"), ".")) : /* @__PURE__ */ React.createElement("ol", { className: "grid gap-2", style: { paddingLeft: 18, listStyle: "decimal" } }, /* @__PURE__ */ React.createElement("li", null, "Buka halaman ini di ", /* @__PURE__ */ React.createElement("b", null, "Chrome"), " (atau Edge)."), /* @__PURE__ */ React.createElement("li", null, "Ketuk menu ", /* @__PURE__ */ React.createElement("b", null, "⋮"), " di pojok kanan atas."), /* @__PURE__ */ React.createElement("li", null, "Pilih ", /* @__PURE__ */ React.createElement("b", null, "Instal aplikasi"), " atau ", /* @__PURE__ */ React.createElement("b", null, "Tambahkan ke layar utama"), ".")), /* @__PURE__ */ React.createElement("div", { className: "sub" }, 'Setelah terpasang, muncul pemberitahuan "Aplikasi sudah terpasang" dan ikonnya ada di layar utama.'), /* @__PURE__ */ React.createElement("button", { type: "button", className: "btn", onClick: onClose }, "Mengerti")));
+}
+function InstallButton({ light }) {
+  const { mode, install, help, setHelp } = useInstall();
+  if (mode === "standalone") return null;
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, mode === "done" ? /* @__PURE__ */ React.createElement("span", { className: "pill ok", title: "Aplikasi sudah terpasang di perangkat ini" }, /* @__PURE__ */ React.createElement(Icon, { n: "check", s: 14 }), "App terpasang") : /* @__PURE__ */ React.createElement("button", { type: "button", className: light ? "btn-gold sm" : "btn-ghost sm", onClick: install }, /* @__PURE__ */ React.createElement(Icon, { n: "download", s: 15 }), "Pasang App"), help && /* @__PURE__ */ React.createElement(InstallHelp, { onClose: () => setHelp(false) }));
+}
 function LoginScreen({ brand, pubErr, onDone }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -2541,7 +2608,7 @@ function LoginScreen({ brand, pubErr, onDone }) {
       setBusy(false);
     }
   };
-  return /* @__PURE__ */ React.createElement(Centered, { brand }, /* @__PURE__ */ React.createElement("form", { onSubmit: submit, className: "card", style: { padding: 22 }, noValidate: true }, /* @__PURE__ */ React.createElement("h1", { className: "h2", style: { fontSize: 24 } }, "Masuk"), /* @__PURE__ */ React.createElement("div", { className: "grid gap-4", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement(Field, { id: "l-email", label: "Email" }, /* @__PURE__ */ React.createElement("input", { id: "l-email", type: "email", className: "input", value: email, onChange: (e) => setEmail(e.target.value), autoComplete: "username", autoFocus: true })), /* @__PURE__ */ React.createElement(Field, { id: "l-pw", label: "Password" }, /* @__PURE__ */ React.createElement("input", { id: "l-pw", type: "password", className: "input", value: pw, onChange: (e) => setPw(e.target.value), autoComplete: "current-password" })), err && /* @__PURE__ */ React.createElement("div", { className: "errmsg", role: "alert", style: { marginTop: -6 } }, err), /* @__PURE__ */ React.createElement("button", { type: "submit", className: "btn", style: { padding: "11px 16px" }, disabled: busy }, busy ? "Memeriksa…" : "Masuk")), pubErr && /* @__PURE__ */ React.createElement("div", { className: "sub", style: { marginTop: 12, color: "var(--warn)" } }, "Data toko belum bisa dibaca (", pubErr, "). Jika baru memasang, pastikan schema.sql sudah dijalankan di Supabase."), !CFG.SUPABASE_URL && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, textAlign: "center" } }, /* @__PURE__ */ React.createElement("button", { type: "button", className: "sub", style: { background: "none", border: 0, textDecoration: "underline", cursor: "pointer" }, onClick: () => {
+  return /* @__PURE__ */ React.createElement(Centered, { brand }, /* @__PURE__ */ React.createElement("form", { onSubmit: submit, className: "card", style: { padding: 22 }, noValidate: true }, /* @__PURE__ */ React.createElement("h1", { className: "h2", style: { fontSize: 24 } }, "Masuk"), /* @__PURE__ */ React.createElement("div", { className: "grid gap-4", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement(Field, { id: "l-email", label: "Email" }, /* @__PURE__ */ React.createElement("input", { id: "l-email", type: "email", className: "input", value: email, onChange: (e) => setEmail(e.target.value), autoComplete: "username", autoFocus: true })), /* @__PURE__ */ React.createElement(Field, { id: "l-pw", label: "Password" }, /* @__PURE__ */ React.createElement("input", { id: "l-pw", type: "password", className: "input", value: pw, onChange: (e) => setPw(e.target.value), autoComplete: "current-password" })), err && /* @__PURE__ */ React.createElement("div", { className: "errmsg", role: "alert", style: { marginTop: -6 } }, err), /* @__PURE__ */ React.createElement("button", { type: "submit", className: "btn", style: { padding: "11px 16px" }, disabled: busy }, busy ? "Memeriksa…" : "Masuk")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(InstallButton, null)), pubErr && /* @__PURE__ */ React.createElement("div", { className: "sub", style: { marginTop: 12, color: "var(--warn)" } }, "Data toko belum bisa dibaca (", pubErr, "). Jika baru memasang, pastikan schema.sql sudah dijalankan di Supabase."), !CFG.SUPABASE_URL && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, textAlign: "center" } }, /* @__PURE__ */ React.createElement("button", { type: "button", className: "sub", style: { background: "none", border: 0, textDecoration: "underline", cursor: "pointer" }, onClick: () => {
     LS.del("wl_url");
     LS.del("wl_key");
     location.reload();
@@ -2656,7 +2723,7 @@ function Shell({ profile, brand, marquee, onLogout }) {
     }
   };
   const navList = nav.map((s) => [s.id, s.label]);
-  return /* @__PURE__ */ React.createElement("div", null, marquee && /* @__PURE__ */ React.createElement("div", { className: "mq-strip full", role: "marquee", "aria-label": "Pengumuman" }, /* @__PURE__ */ React.createElement("span", null, marquee)), /* @__PURE__ */ React.createElement("header", { style: { position: "sticky", top: "env(safe-area-inset-top, 0px)", zIndex: 20, marginInline: -16, background: "var(--bg)" } }, /* @__PURE__ */ React.createElement("div", { style: { background: "var(--brand)", color: "#F8ECD0", paddingInline: 16, borderBottom: "3px solid var(--gold)" } }, /* @__PURE__ */ React.createElement("div", { className: "wrap flex flex-wrap items-center gap-x-4 gap-y-2", style: { paddingBlock: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 42, height: 42, borderRadius: 6, overflow: "hidden", border: "1.5px solid var(--gold)", flex: "none", background: "rgba(0,0,0,.25)", display: "grid", placeItems: "center", color: "var(--gold)", fontWeight: 700 } }, brand.logo_url ? /* @__PURE__ */ React.createElement("img", { src: brand.logo_url, alt: "", style: { width: "100%", height: "100%", objectFit: "cover" } }) : initials(brand.brand_name)), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "display", style: { fontSize: 25, fontWeight: 700, lineHeight: 1, color: "#FFF6E0", overflowWrap: "anywhere" } }, brand.brand_name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--gold)", marginTop: 3 } }, ROLE_LABEL[profile.role])), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2", style: { marginLeft: "auto" } }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0 hidden sm:block", style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, lineHeight: 1.2 } }, profile.full_name || profile.email), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, opacity: 0.8 } }, profile.email)), /* @__PURE__ */ React.createElement("button", { type: "button", className: "icon-btn", style: { color: "#F8ECD0" }, "aria-label": "Keluar", title: "Keluar", onClick: onLogout }, /* @__PURE__ */ React.createElement(Icon, { n: "logout", s: 18 }))))), (nav.length > 1 || cur.subs.length > 1) && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--surface)", borderBottom: "1px solid var(--line)", paddingInline: 16 } }, nav.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "wrap tabs", role: "tablist", "aria-label": "Menu utama", onKeyDown: (e) => onKey(e, navList, cur.id, setSecId) }, nav.map((s) => /* @__PURE__ */ React.createElement("button", { key: s.id, type: "button", role: "tab", "aria-selected": cur.id === s.id, tabIndex: cur.id === s.id ? 0 : -1, className: "tab", onClick: () => setSecId(s.id) }, s.label))), cur.subs.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "wrap tabs", role: "tablist", "aria-label": "Sub menu", style: nav.length > 1 ? { borderTop: "1px solid var(--line)" } : void 0, onKeyDown: (e) => onKey(e, cur.subs, sub, setSub) }, cur.subs.map(([id, l]) => /* @__PURE__ */ React.createElement("button", { key: id, type: "button", role: "tab", "aria-selected": sub === id, tabIndex: sub === id ? 0 : -1, className: "tab", style: nav.length > 1 ? { padding: "9px 14px", fontSize: 13 } : void 0, onClick: () => setSub(id) }, l))))), /* @__PURE__ */ React.createElement("main", { className: "wrap", style: { paddingBlock: 24 } }, /* @__PURE__ */ React.createElement(Boundary, { key: cur.id + "/" + sub }, cur.render(sub, setSub))));
+  return /* @__PURE__ */ React.createElement("div", null, marquee && /* @__PURE__ */ React.createElement("div", { className: "mq-strip full", role: "marquee", "aria-label": "Pengumuman" }, /* @__PURE__ */ React.createElement("span", null, marquee)), /* @__PURE__ */ React.createElement("header", { style: { position: "sticky", top: "env(safe-area-inset-top, 0px)", zIndex: 20, marginInline: -16, background: "var(--bg)" } }, /* @__PURE__ */ React.createElement("div", { style: { background: "var(--brand)", color: "#F8ECD0", paddingInline: 16, borderBottom: "3px solid var(--gold)" } }, /* @__PURE__ */ React.createElement("div", { className: "wrap flex flex-wrap items-center gap-x-4 gap-y-2", style: { paddingBlock: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 42, height: 42, borderRadius: 6, overflow: "hidden", border: "1.5px solid var(--gold)", flex: "none", background: "rgba(0,0,0,.25)", display: "grid", placeItems: "center", color: "var(--gold)", fontWeight: 700 } }, brand.logo_url ? /* @__PURE__ */ React.createElement("img", { src: brand.logo_url, alt: "", style: { width: "100%", height: "100%", objectFit: "cover" } }) : initials(brand.brand_name)), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "display", style: { fontSize: 25, fontWeight: 700, lineHeight: 1, color: "#FFF6E0", overflowWrap: "anywhere" } }, brand.brand_name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--gold)", marginTop: 3 } }, ROLE_LABEL[profile.role])), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2", style: { marginLeft: "auto" } }, /* @__PURE__ */ React.createElement(InstallButton, { light: true }), /* @__PURE__ */ React.createElement("div", { className: "min-w-0 hidden sm:block", style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, lineHeight: 1.2 } }, profile.full_name || profile.email), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, opacity: 0.8 } }, profile.email)), /* @__PURE__ */ React.createElement("button", { type: "button", className: "icon-btn", style: { color: "#F8ECD0" }, "aria-label": "Keluar", title: "Keluar", onClick: onLogout }, /* @__PURE__ */ React.createElement(Icon, { n: "logout", s: 18 }))))), (nav.length > 1 || cur.subs.length > 1) && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--surface)", borderBottom: "1px solid var(--line)", paddingInline: 16 } }, nav.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "wrap tabs", role: "tablist", "aria-label": "Menu utama", onKeyDown: (e) => onKey(e, navList, cur.id, setSecId) }, nav.map((s) => /* @__PURE__ */ React.createElement("button", { key: s.id, type: "button", role: "tab", "aria-selected": cur.id === s.id, tabIndex: cur.id === s.id ? 0 : -1, className: "tab", onClick: () => setSecId(s.id) }, s.label))), cur.subs.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "wrap tabs", role: "tablist", "aria-label": "Sub menu", style: nav.length > 1 ? { borderTop: "1px solid var(--line)" } : void 0, onKeyDown: (e) => onKey(e, cur.subs, sub, setSub) }, cur.subs.map(([id, l]) => /* @__PURE__ */ React.createElement("button", { key: id, type: "button", role: "tab", "aria-selected": sub === id, tabIndex: sub === id ? 0 : -1, className: "tab", style: nav.length > 1 ? { padding: "9px 14px", fontSize: 13 } : void 0, onClick: () => setSub(id) }, l))))), /* @__PURE__ */ React.createElement("main", { className: "wrap", style: { paddingBlock: 24 } }, /* @__PURE__ */ React.createElement(Boundary, { key: cur.id + "/" + sub }, cur.render(sub, setSub))));
 }
 function Authed() {
   const [phase, setPhase] = useState("loading");
@@ -2755,6 +2822,9 @@ function Root() {
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(Boundary, null, /* @__PURE__ */ React.createElement(Root, null)));
 
+</script>
+<script>
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function () {}); });
 </script>
 </body>
 </html>
